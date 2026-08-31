@@ -1,6 +1,5 @@
 import os
 from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import AIMessage
 
 
@@ -92,24 +91,27 @@ def get_llm():
     """
     Initialize and return the configured LLM.
     
+    Demo mode (DEMO_MODE=true/1/yes):
+      - Returns DemoLLM instance for deterministic routing/decisions
+      - All agent nodes execute with real deterministic business tools
+      - No Gemini API calls made
+    
     Normal mode (DEMO_MODE unset/false):
       - Uses real Gemini API with GEMINI_API_KEY
-    
-    Demo mode (DEMO_MODE=true):
-      - Returns deterministic LLM that provides minimal structured responses
-      - All agent execution uses real deterministic business tools
-      - All results labeled as DEMO MODE
+      - Full LLM capability for all agents
     
     Raises ValueError if GEMINI_API_KEY is not set and DEMO_MODE is not enabled.
     """
     load_dotenv()
     
-    # Check for demo mode
+    # Check for demo mode FIRST, before any other imports
     demo_mode = os.getenv("DEMO_MODE", "").lower() in ("true", "1", "yes")
     if demo_mode:
         return DemoLLM()
     
-    # Otherwise, use real Gemini API
+    # Normal mode: Use real Gemini API
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise ValueError("GEMINI_API_KEY is not configured. Set GEMINI_API_KEY or use DEMO_MODE=true.")
