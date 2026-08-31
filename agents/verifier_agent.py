@@ -116,11 +116,11 @@ def build_verification_payload(state: MultiAgentState) -> str:
 
 def get_verifier_agent():
     llm = get_llm()
+    # Removed response_format to avoid gemini-3.6-flash prefilling incompatibility
     return create_react_agent(
         llm,
         tools=VERIFIER_TOOLS,
         prompt=VERIFIER_PROMPT,
-        response_format=VerificationReport,
     )
 
 
@@ -140,7 +140,18 @@ def verifier_node(state: MultiAgentState):
     try:
         agent = get_verifier_agent()
         response = agent.invoke({"messages": [HumanMessage(content=build_verification_payload(state))]})
+        
+        # Extract structured response from agent output
         report = response.get("structured_response")
+        
+        # If no structured response, try to parse from messages
+        if not report and "messages" in response:
+            last_message = response["messages"][-1] if response["messages"] else None
+            if last_message and hasattr(last_message, 'content'):
+                try:
+                    report = VerificationReport.model_validate_json(last_message.content)
+                except:
+                    pass
 
         if isinstance(report, VerificationReport):
             verification_results = report.model_dump()
