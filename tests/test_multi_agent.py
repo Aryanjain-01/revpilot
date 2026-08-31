@@ -15,6 +15,11 @@ from agents.verifier_agent import (
     build_verification_payload,
     verifier_node,
 )
+from agents.decision_agent import (
+    DecisionReport,
+    build_decision_payload,
+    decision_node,
+)
 
 def test_multi_agent_state_initialization():
     """Test that our MultiAgentState TypedDict state structure works as expected."""
@@ -28,6 +33,7 @@ def test_multi_agent_state_initialization():
         customer_findings={},
         agent_errors={},
         verification_results={},
+        decision_result={},
         final_answer=""
     )
     assert state['user_question'] == "Test question"
@@ -146,6 +152,63 @@ def test_verifier_node_accepts_mocked_structured_response(monkeypatch):
     result = verifier_node(state)
     assert result["verification_results"]["summary"] == "Revenue and profit claims checked."
     assert result["verification_results"]["verified_claims"][0]["classification"] == "SUPPORTED"
+
+def test_build_decision_payload_uses_only_verification_results():
+    state = MultiAgentState(
+        user_question="Do not include this",
+        sales_findings={"findings": "Do not include this finding"},
+        verification_results={
+            "summary": "Verified revenue changed.",
+            "verified_claims": [],
+            "unsupported_causal_claims": [],
+        },
+        agent_errors={},
+    )
+    payload = build_decision_payload(state)
+    assert "Verified revenue changed." in payload
+    assert "Do not include this" not in payload
+    assert "ground_truth" not in payload
+    assert "evaluation_cases" not in payload
+
+def test_decision_node_accepts_mocked_structured_response(monkeypatch):
+    """Decision Agent tests should not call Gemini."""
+    report = DecisionReport(
+        primary_driver="Profit declined less than revenue based on supported verifier evidence.",
+        confidence=0.72,
+        recommended_actions=["Review margin mix changes using verified sales evidence."],
+    )
+
+    class FakeDecisionLLM:
+        def invoke(self, _messages):
+            return report
+
+    monkeypatch.setattr("agents.decision_agent.get_decision_llm", lambda: FakeDecisionLLM())
+    state = MultiAgentState(
+        verification_results={
+            "summary": "Revenue and profit comparisons are supported.",
+            "verified_claims": [
+                {
+                    "claim": "Profit declined less than revenue.",
+                    "source_agent": "sales",
+                    "classification": "SUPPORTED",
+                    "evidence": "mocked deterministic evidence",
+                    "verifier_notes": "observation only",
+                }
+            ],
+            "unsupported_causal_claims": [],
+        },
+        agent_errors={},
+    )
+
+    result = decision_node(state)
+    assert result["decision_result"]["primary_driver"] == report.primary_driver
+    assert result["decision_result"]["confidence"] == 0.72
+    assert result["decision_result"]["recommended_actions"] == report.recommended_actions
+
+def test_decision_node_low_confidence_without_verification_results():
+    result = decision_node(MultiAgentState(verification_results={}))
+    assert result["decision_result"]["confidence"] == 0.0
+    assert "Insufficient verified evidence" in result["decision_result"]["primary_driver"]
 
 def test_multi_agent_graph_construction():
     """Test that the LangGraph compiles successfully for multi-agent setup."""

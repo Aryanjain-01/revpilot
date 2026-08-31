@@ -9,6 +9,7 @@ from .sales_agent import sales_node
 from .inventory_agent import inventory_node
 from .customer_agent import customer_node
 from .verifier_agent import verifier_node
+from .decision_agent import decision_node
 from .content_utils import extract_text_content
 
 class InvestigationPlan(BaseModel):
@@ -70,14 +71,16 @@ def route_agents(state: MultiAgentState):
 SYNTHESIS_PROMPT = """You are the Synthesis Agent.
 You receive the findings from specialized investigation agents (Sales, Inventory, Customer) and the original user question.
 You also receive an Evidence Verifier report that audited important claims against deterministic tools.
+You also receive a lightweight Decision Agent report based only on verified evidence.
 
 Your job:
 1. Prioritize VERIFIED evidence over unverified specialist statements.
-2. Summarize the findings.
-3. Identify possible root causes only when supported by verified evidence.
-4. Compare evidence.
-5. Acknowledge uncertainty when claims are PARTIALLY_SUPPORTED, CONTRADICTED, or INSUFFICIENT_EVIDENCE.
-6. Avoid claiming causation without sufficient verified evidence.
+2. Use the Decision Agent report as guidance, but do not overstate it.
+3. Summarize the findings.
+4. Identify possible root causes only when supported by verified evidence.
+5. Compare evidence.
+6. Acknowledge uncertainty when claims are PARTIALLY_SUPPORTED, CONTRADICTED, or INSUFFICIENT_EVIDENCE.
+7. Avoid claiming causation without sufficient verified evidence.
 
 If an agent failed or its findings are missing, acknowledge that limitation.
 """
@@ -93,6 +96,9 @@ def synthesis_node(state: MultiAgentState):
 
     if state.get("verification_results"):
         content += f"--- Evidence Verification ---\n{state['verification_results']}\n\n"
+
+    if state.get("decision_result"):
+        content += f"--- Decision Agent Report ---\n{state['decision_result']}\n\n"
         
     if state.get("sales_findings"):
         content += f"--- Sales Findings ---\n{extract_text_content(state['sales_findings'].get('findings'))}\n\n"
@@ -127,6 +133,7 @@ def create_multi_agent_graph():
     workflow.add_node("inventory", inventory_node)
     workflow.add_node("customer", customer_node)
     workflow.add_node("verifier", verifier_node)
+    workflow.add_node("decision_agent", decision_node)
     workflow.add_node("synthesis", synthesis_node)
     
     # Set entry point
@@ -143,7 +150,8 @@ def create_multi_agent_graph():
     workflow.add_edge("sales", "verifier")
     workflow.add_edge("inventory", "verifier")
     workflow.add_edge("customer", "verifier")
-    workflow.add_edge("verifier", "synthesis")
+    workflow.add_edge("verifier", "decision_agent")
+    workflow.add_edge("decision_agent", "synthesis")
     
     # Synthesis ends the graph
     workflow.add_edge("synthesis", END)

@@ -42,6 +42,9 @@ class MultiAgentState(TypedDict):
 
     # Structured verifier audit of specialist claims
     verification_results: dict
+
+    # Lightweight decision based only on verifier output
+    decision_result: dict
     
     # The preliminary synthesized answer produced by the Synthesis node
     final_answer: str

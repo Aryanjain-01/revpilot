@@ -39,6 +39,7 @@ def run_multi_agent(question: str):
         "investigation_plan": {},
         "specialists_activity": [],
         "verification_results": {},
+        "decision_result": {},
         "errors": {},
         "synthesis_result": "",
         "execution_success": False
@@ -65,6 +66,7 @@ def run_multi_agent(question: str):
                 trajectory_log["specialists_activity"].append(final_state["customer_findings"])
 
             trajectory_log["verification_results"] = final_state.get("verification_results", {})
+            trajectory_log["decision_result"] = final_state.get("decision_result", {})
                 
             trajectory_log["errors"] = final_state.get("agent_errors", {})
             trajectory_log["synthesis_result"] = extract_text_content(final_state.get("final_answer", ""))
