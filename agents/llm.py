@@ -17,7 +17,8 @@ def get_llm():
     # LangChain's ChatGoogleGenerativeAI natively supports tool calling
     llm = ChatGoogleGenerativeAI(
         model=model_name,
-        google_api_key=api_key
+        google_api_key=api_key,
+        disable_streaming=True
     )
     
     return llm
