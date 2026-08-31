@@ -15,10 +15,12 @@ def get_llm():
     model_name = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
     
     # LangChain's ChatGoogleGenerativeAI natively supports tool calling
+    # Gemini 3.6 Flash doesn't support prefilling, so we disable it
     llm = ChatGoogleGenerativeAI(
         model=model_name,
         google_api_key=api_key,
-        disable_streaming=True
+        disable_streaming=True,
+        max_tokens=8192
     )
     
     return llm
