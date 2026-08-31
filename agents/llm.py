@@ -52,12 +52,21 @@ class DemoStructuredLLM:
         
         if 'InvestigationPlan' in schema_name:
             # Orchestrator: simple routing based on question keywords
+                       # Orchestrator: simple routing based on question keywords
             question_text = ""
             if isinstance(messages, list):
+                fallback_text = ""
                 for msg in messages:
-                    if hasattr(msg, 'content'):
+                    if not hasattr(msg, 'content'):
+                        continue
+                    msg_type = getattr(msg, 'type', None)
+                    if not fallback_text:
+                        fallback_text = msg.content.lower()
+                    # Prefer the actual human/user message over system/other messages
+                    if msg_type == 'human' or msg.__class__.__name__ == 'HumanMessage':
                         question_text = msg.content.lower()
-                        break
+                if not question_text:
+                    question_text = fallback_text
             
             # Simple keyword-based routing
             agents = []
