@@ -2,8 +2,10 @@ import os
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage
 
+from langchain_core.runnables import Runnable
 
-class DemoLLM:
+
+class DemoLLM(Runnable):
     """
     Deterministic LLM fallback for demo mode.
     Only provides minimal structured responses where the LLM is required.
@@ -17,7 +19,7 @@ class DemoLLM:
         """Return a structured output wrapper for LLM-required decisions."""
         return DemoStructuredLLM(output_schema)
     
-    def invoke(self, messages):
+    def invoke(self, messages, config=None, **kwargs):
         """
         Generic LLM invocation for synthesis.
         Returns minimal deterministic response without claiming findings.
